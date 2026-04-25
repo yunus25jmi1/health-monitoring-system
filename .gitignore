@@ -1,0 +1,25 @@
+# Binaries
+health-go-backend
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Environment variables
+.env
+.env.*
+
+# Go workspace
+vendor/
+go.work
+go.work.sum
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+
+# Application specific
+storage/
+*.pdf

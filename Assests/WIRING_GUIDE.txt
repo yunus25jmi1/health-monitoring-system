@@ -1,0 +1,263 @@
+=============================================================
+  SMART HEALTH MONITORING SYSTEM — COMPLETE WIRING GUIDE
+  ESP32 WROOM-32 | Team: Yunus, Vishal, Ankur
+=============================================================
+
+IMPORTANT NOTES BEFORE YOU START:
+- ESP32 GPIO pins are 3.3V logic. Do NOT connect 5V signals directly.
+- ADC pins (34, 35, 32, 33) are INPUT ONLY — no output.
+- Power the ESP32 via Micro-USB or Vin (5V).
+- Always wire GND first. Double-check before powering on.
+- Use a multimeter to verify voltage before connecting sensors.
+
+
+=============================================================
+  COMPONENT 1: MAX30102 — Heart Rate & SpO2
+=============================================================
+
+MAX30102 Pin    →   ESP32 Pin
+─────────────────────────────
+VIN / VCC       →   3.3V
+GND             →   GND
+SDA             →   GPIO21 (default I2C SDA on ESP32)
+SCL             →   GPIO22 (default I2C SCL on ESP32)
+INT             →   Not connected (optional interrupt, skip for now)
+
+NOTES:
+- MAX30102 uses I2C communication (address: 0x57).
+- Wire is already in ESP32 core — no extra pull-up resistors needed
+  because the module board has them built-in.
+- Place finger LIGHTLY on the sensor — too much pressure kills the signal.
+- Do NOT connect VIN to 5V — it will damage the sensor.
+
+
+=============================================================
+  COMPONENT 2: DS18B20 — Body Temperature
+=============================================================
+
+DS18B20 Pin     →   ESP32 Pin / Connection
+──────────────────────────────────────────
+VCC (Red wire)  →   3.3V
+GND (Black wire)→   GND
+DATA (Yellow)   →   GPIO5
+
+MANDATORY RESISTOR:
+- Connect a 4.7kΩ resistor between DATA pin and 3.3V (pull-up).
+- Without this resistor, the sensor will NOT respond. This is not optional.
+
+Wiring diagram (text):
+
+  3.3V ──┬──── [4.7kΩ] ────┬──── GPIO5 (ESP32)
+         │                  │
+         │              DS18B20
+         │              DATA pin
+        VCC              │
+       DS18B20          GND (DS18B20)
+                         │
+                        GND (ESP32)
+
+NOTES:
+- If using the waterproof probe version: Red=VCC, Black=GND, Yellow=DATA.
+- Library: DallasTemperature + OneWire.
+- Sensor address index 0 used in code (supports multiple sensors on same pin).
+
+
+=============================================================
+  COMPONENT 3: AD8232 — ECG Heart Monitor
+=============================================================
+
+AD8232 Pin      →   ESP32 Pin
+─────────────────────────────
+3.3V            →   3.3V
+GND             →   GND
+OUTPUT          →   GPIO34 (ADC1_CH6 — analog input)
+LO+             →   GPIO32 (digital input — leads-off detection)
+LO-             →   GPIO33 (digital input — leads-off detection)
+SDN             →   Not connected (shutdown pin — leave floating)
+
+ELECTRODE PLACEMENT:
+- RA (Right Arm) electrode  →  Red lead wire on AD8232
+- LA (Left Arm) electrode   →  Yellow lead wire on AD8232
+- RL (Right Leg / Ground)   →  Green lead wire on AD8232
+
+For demo/testing (on chest):
+- Red lead:    Right side below collarbone
+- Yellow lead: Left side below collarbone
+- Green lead:  Lower left rib area
+
+NOTES:
+- GPIO34 is ADC — reads 0 to 4095 (12-bit, 0–3.3V range).
+- If LO+ or LO- reads HIGH → electrodes are off/disconnected.
+  Code handles this and returns -1 as sentinel value.
+- Do NOT use GPIO34/35/36/39 as OUTPUT — they are input-only.
+- Keep lead wires away from WiFi antenna area to reduce noise.
+
+
+=============================================================
+  COMPONENT 4: NIR Glucose Sensor (Custom Build)
+  940nm IR LED + Photodiode
+=============================================================
+
+SUB-COMPONENT A: 940nm IR LED
+──────────────────────────────
+IR LED Anode (+)   →   Collector of NPN transistor (e.g. 2N2222 or BC547)
+IR LED Cathode (-) →   GND
+
+NPN Transistor:
+- Base              →  GPIO26 (via 1kΩ resistor)
+- Emitter           →  GND
+- Collector         →  IR LED Cathode side... wait, corrected below:
+
+Correct transistor circuit:
+  3.3V ──── [100Ω resistor] ──── IR LED Anode (+)
+                                  IR LED Cathode (–) ──── Collector (NPN)
+                                                          Emitter ──── GND
+  GPIO26 ──── [1kΩ resistor] ──── Base (NPN)
+
+Why transistor? GPIO26 can only supply ~12mA. IR LED needs ~20–50mA.
+The transistor acts as a switch — GPIO26 controls it safely.
+
+SUB-COMPONENT B: Photodiode (receiver)
+──────────────────────────────────────
+Photodiode Anode   →  3.3V
+Photodiode Cathode →  GPIO35 (ADC input)
+                   →  Also connect a 10kΩ resistor from Cathode to GND
+
+Circuit:
+  3.3V ──── Photodiode Anode
+             Photodiode Cathode ──┬──── GPIO35 (ADC)
+                                  │
+                               [10kΩ]
+                                  │
+                                 GND
+
+HOW IT WORKS:
+- When IR LED fires, light passes through finger/skin.
+- Photodiode detects returning/transmitted light intensity.
+- Less light = denser blood = correlated to glucose levels (rough estimate).
+- Code averages 10 ADC samples to reduce noise.
+
+PLACEMENT:
+- Position IR LED and photodiode facing each other through a fingertip.
+- Use heat shrink tubing or black tape to block ambient light.
+- This is the most sensitive part — ambient light will corrupt readings.
+
+
+=============================================================
+  COMPONENT 5: TP4056 — Battery Charging Module
+=============================================================
+
+TP4056 Pin      →   Connection
+───────────────────────────────
+USB (Micro/C)   →   5V charger (wall adapter or PC USB)
+B+              →   Li-ion Battery positive (+)
+B-              →   Li-ion Battery negative (–)
+OUT+            →   ESP32 VIN or power rail (+)
+OUT-            →   GND rail
+
+NOTES:
+- TP4056 WITH protection circuit is recommended (has DW01 chip).
+  Protects against over-discharge, over-charge, short circuit.
+- RED LED on TP4056 = charging. GREEN LED = fully charged.
+- OUT+ to ESP32 VIN (5V pin) — NOT 3.3V pin. ESP32 has onboard regulator.
+- Do NOT connect battery directly to ESP32 without TP4056 — you WILL damage it.
+
+Battery → TP4056 wiring:
+  Battery (+) ──── B+ on TP4056
+  Battery (–) ──── B- on TP4056
+  OUT+ ──────────── VIN on ESP32
+  OUT- ──────────── GND on ESP32
+
+
+=============================================================
+  COMPLETE GPIO SUMMARY TABLE
+=============================================================
+
+ESP32 Pin   │ Function          │ Connected To
+────────────┼───────────────────┼──────────────────────────
+3.3V        │ Power             │ MAX30102 VCC, DS18B20 VCC,
+            │                   │ AD8232 3.3V, Photodiode Anode
+GND         │ Ground            │ All component GNDs
+GPIO5       │ 1-Wire Data       │ DS18B20 DATA (+ 4.7kΩ to 3.3V)
+GPIO21      │ I2C SDA           │ MAX30102 SDA
+GPIO22      │ I2C SCL           │ MAX30102 SCL
+GPIO34      │ ADC Input         │ AD8232 OUTPUT (ECG signal)
+GPIO32      │ Digital Input     │ AD8232 LO+
+GPIO33      │ Digital Input     │ AD8232 LO-
+GPIO35      │ ADC Input         │ Photodiode Cathode (+ 10kΩ to GND)
+GPIO26      │ Digital Output    │ IR LED transistor Base (via 1kΩ)
+GPIO2       │ Digital Output    │ Status LED (built-in)
+VIN         │ 5V Power Input    │ TP4056 OUT+
+
+
+=============================================================
+  POWER RAIL SUMMARY
+=============================================================
+
+3.3V rail (from ESP32 3V3 pin):
+  → MAX30102 VCC
+  → DS18B20 VCC
+  → AD8232 3.3V
+  → Photodiode Anode
+  → Pull-up resistor for DS18B20 (other end to GPIO5)
+  → IR LED circuit (via 100Ω resistor)
+
+GND rail (common ground):
+  → MAX30102 GND
+  → DS18B20 GND
+  → AD8232 GND
+  → NPN transistor Emitter
+  → Photodiode 10kΩ resistor (other end to GPIO35)
+  → TP4056 OUT-
+
+5V (from TP4056 OUT+ or USB):
+  → ESP32 VIN only
+
+
+=============================================================
+  REQUIRED LIBRARIES (install in Arduino IDE)
+=============================================================
+
+1. MAX30105 by SparkFun
+   → Search "MAX30105" in Library Manager
+
+2. heartRate (bundled with MAX30105 library)
+   → Included automatically
+
+3. DallasTemperature by Miles Burton
+   → Search "DallasTemperature"
+
+4. OneWire by Paul Stoffregen
+   → Search "OneWire"
+
+5. ArduinoJson by Benoit Blanchon
+   → Search "ArduinoJson" — install v6.x
+
+6. ESP32 Board Support
+   → File > Preferences > Additional Board URLs:
+     https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
+   → Board Manager: search "esp32" → install Espressif Systems esp32
+
+
+=============================================================
+  TESTING ORDER (do this step by step)
+=============================================================
+
+Step 1: Power ESP32 via USB only. Open Serial Monitor (115200 baud).
+        Confirm "Boot Complete" message.
+
+Step 2: Wire only MAX30102. Upload code. Place finger.
+        Confirm BPM and SpO2 printing in Serial Monitor.
+
+Step 3: Add DS18B20. Confirm temperature reading (should be ~36–37°C on skin).
+
+Step 4: Add AD8232 with electrodes. Confirm ECG raw values printing.
+        Values should fluctuate — a flat line means leads are off.
+
+Step 5: Add NIR glucose circuit. Confirm glucose estimate is printing.
+        Raw value will need calibration with real glucometer.
+
+Step 6: Set WiFi credentials and SERVER_URL. Confirm HTTP 200 response.
+
+Step 7: Connect TP4056 + battery. Remove USB. Confirm system runs on battery.
+=============================================================
