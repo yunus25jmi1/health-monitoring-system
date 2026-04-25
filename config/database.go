@@ -9,7 +9,9 @@ import (
 )
 
 func ConnectDatabase(cfg Config) *gorm.DB {
-	db, err := gorm.Open(postgres.Open(cfg.DBDSN), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(cfg.DBDSN), &gorm.Config{
+		PrepareStmt: false,
+	})
 	if err != nil {
 		log.Fatalf("failed to connect database: %v", err)
 	}
