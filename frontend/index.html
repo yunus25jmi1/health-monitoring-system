@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Health - Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center h-screen">
+    <div class="bg-white p-8 rounded-lg shadow-lg w-96">
+        <h1 class="text-3xl font-bold text-center text-blue-600 mb-6">Smart Health</h1>
+        <p class="text-gray-500 text-center mb-8">Access your medical portal</p>
+        
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Email Address</label>
+                <input type="email" id="email" class="mt-1 block w-full border border-gray-300 rounded-md p-2 shadow-sm focus:ring-blue-500 focus:border-blue-500" placeholder="admin@yunus.eu.org">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Password</label>
+                <input type="password" id="password" class="mt-1 block w-full border border-gray-300 rounded-md p-2 shadow-sm focus:ring-blue-500 focus:border-blue-500" placeholder="••••••••">
+            </div>
+            <button onclick="handleLogin()" id="loginBtn" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 transition">
+                Sign In
+            </button>
+        </div>
+        <p id="errorMsg" class="text-red-500 text-sm mt-4 hidden"></p>
+    </div>
+
+    <script>
+        const API_BASE = "https://health.yunus.eu.org/api/v1";
+
+        async function handleLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorMsg = document.getElementById('errorMsg');
+            const loginBtn = document.getElementById('loginBtn');
+
+            loginBtn.innerText = "Processing...";
+            errorMsg.classList.add('hidden');
+
+            try {
+                const res = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    localStorage.setItem('sh_token', data.access_token);
+                    localStorage.setItem('sh_role', data.role);
+                    localStorage.setItem('sh_uid', data.user_id);
+                    localStorage.setItem('sh_name', email.split('@')[0]);
+
+                    if (data.role === 'doctor') {
+                        window.location.href = 'doctor.html';
+                    } else {
+                        window.location.href = 'patient.html';
+                    }
+                } else {
+                    errorMsg.innerText = data.message || "Login failed";
+                    errorMsg.classList.remove('hidden');
+                    loginBtn.innerText = "Sign In";
+                }
+            } catch (err) {
+                errorMsg.innerText = "Network error connection failed";
+                errorMsg.classList.remove('hidden');
+                loginBtn.innerText = "Sign In";
+            }
+        }
+    </script>
+</body>
+</html>
