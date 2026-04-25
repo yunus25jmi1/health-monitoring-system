@@ -19,19 +19,23 @@ func NewRouter(cfg config.Config, db *gorm.DB) *gin.Engine {
 	r.Use(gin.Logger(), gin.Recovery())
 	r.Use(middleware.RateLimit(cfg.RateLimitRPM))
 	corsConfig := cors.Config{
-		AllowMethods: []string{"GET", "POST", "PATCH", "OPTIONS"},
-		AllowHeaders: []string{"Content-Type", "Authorization", "X-Device-Key"},
-	}
-	if len(cfg.AllowedOrigin) == 1 && cfg.AllowedOrigin[0] == "*" {
-		corsConfig.AllowAllOrigins = true
-	} else {
-		corsConfig.AllowOrigins = cfg.AllowedOrigin
+		AllowAllOrigins: true,
+		AllowMethods:     []string{"GET", "POST", "PATCH", "OPTIONS"},
+		AllowHeaders:     []string{"Content-Type", "Authorization", "X-Device-Key", "Accept", "Origin"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
 	}
 	r.Use(cors.New(corsConfig))
 
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
+
+	// Serve frontend static files
+	r.StaticFile("/", "./frontend/index.html")
+	r.StaticFile("/index.html", "./frontend/index.html")
+	r.StaticFile("/doctor.html", "./frontend/doctor.html")
+	r.StaticFile("/patient.html", "./frontend/patient.html")
 
 	authHandler := handlers.NewAuthHandler(cfg, db)
 	aiService := services.NewAIService(cfg, db)
