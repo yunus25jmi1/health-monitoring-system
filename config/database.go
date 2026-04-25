@@ -9,7 +9,10 @@ import (
 )
 
 func ConnectDatabase(cfg Config) *gorm.DB {
-	db, err := gorm.Open(postgres.Open(cfg.DBDSN), &gorm.Config{
+	db, err := gorm.Open(postgres.New(postgres.Config{
+		DSN:                  cfg.DBDSN,
+		PreferSimpleProtocol: true,
+	}), &gorm.Config{
 		PrepareStmt: false,
 	})
 	if err != nil {
