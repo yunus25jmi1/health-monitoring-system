@@ -175,12 +175,20 @@ func (h *ReportHandler) Patch(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": report})
 }
 
+type approveReportRequest struct {
+	FinalNotes *string `json:"final_notes"`
+	FinalNote  *string `json:"final_note"` // Support singular for frontend compatibility
+}
+
 func (h *ReportHandler) Approve(c *gin.Context) {
 	reportID, err := strconv.Atoi(c.Param("id"))
 	if err != nil || reportID <= 0 {
 		middleware.JSONError(c, http.StatusBadRequest, "validation_failed", "report id must be a positive integer")
 		return
 	}
+
+	var req approveReportRequest
+	_ = c.ShouldBindJSON(&req)
 
 	var report models.Report
 	if err := h.db.First(&report, reportID).Error; err != nil {
@@ -213,11 +221,13 @@ func (h *ReportHandler) Approve(c *gin.Context) {
 	report.Status = models.ReportStatusApproved
 	report.ApprovedAt = &now
 	report.PDFPath = &base
-
-	if doctorIDValue, ok := c.Get("auth_user_id"); ok {
-		if doctorID, ok := doctorIDValue.(uint); ok {
-			report.DoctorID = &doctorID
-		}
+	
+	notes := req.FinalNotes
+	if notes == nil {
+		notes = req.FinalNote
+	}
+	if notes != nil {
+		report.FinalNote = notes
 	}
 
 	updates := map[string]any{
@@ -225,7 +235,11 @@ func (h *ReportHandler) Approve(c *gin.Context) {
 		"approved_at": now,
 		"pdf_path":    base,
 	}
+	if notes != nil {
+		updates["final_note"] = *notes
+	}
 	if doctorIDValue, ok := c.Get("auth_user_id"); ok {
+
 		if doctorID, ok := doctorIDValue.(uint); ok {
 			updates["doctor_id"] = doctorID
 			report.DoctorID = &doctorID
@@ -235,6 +249,7 @@ func (h *ReportHandler) Approve(c *gin.Context) {
 	result := h.db.Model(&report).
 		Where("id = ? AND status = ?", report.ID, fromStatus).
 		Updates(updates)
+
 	if result.Error != nil {
 		if strings.Contains(strings.ToLower(result.Error.Error()), "locked") {
 			middleware.JSONError(c, http.StatusConflict, "conflict", "report approval is in progress by another request")
