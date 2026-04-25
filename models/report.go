@@ -9,9 +9,10 @@ import (
 )
 
 const (
-	ReportStatusPending  = "pending"
-	ReportStatusReviewed = "reviewed"
-	ReportStatusApproved = "approved"
+	ReportStatusPending   = "pending"
+	ReportStatusReviewed  = "reviewed"
+	ReportStatusApproved  = "approved"
+	ReportStatusDismissed = "dismissed"
 )
 
 type Report struct {
@@ -28,7 +29,7 @@ type Report struct {
 
 func IsValidReportStatus(status string) bool {
 	switch status {
-	case ReportStatusPending, ReportStatusReviewed, ReportStatusApproved:
+	case ReportStatusPending, ReportStatusReviewed, ReportStatusApproved, ReportStatusDismissed:
 		return true
 	default:
 		return false

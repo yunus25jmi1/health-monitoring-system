@@ -22,10 +22,12 @@ func CanTransitionReportStatus(from, to string) bool {
 
 	switch from {
 	case models.ReportStatusPending:
-		return to == models.ReportStatusReviewed || to == models.ReportStatusApproved
+		return to == models.ReportStatusReviewed || to == models.ReportStatusApproved || to == models.ReportStatusDismissed
 	case models.ReportStatusReviewed:
-		return to == models.ReportStatusApproved
+		return to == models.ReportStatusApproved || to == models.ReportStatusDismissed
 	case models.ReportStatusApproved:
+		return false
+	case models.ReportStatusDismissed:
 		return false
 	default:
 		return false
