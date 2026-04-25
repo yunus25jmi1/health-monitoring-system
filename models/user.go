@@ -22,7 +22,6 @@ type User struct {
 	Role      string    `gorm:"size:20;not null" json:"role"` 
 	DeviceKey string    `gorm:"size:100;uniqueIndex" json:"-"`
 	DoctorID  *uint     `json:"doctor_id"`
-}
 	CreatedAt time.Time `json:"created_at"`
 }
 
