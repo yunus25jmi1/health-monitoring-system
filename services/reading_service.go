@@ -46,8 +46,8 @@ func IsUrgent(req models.ReadingRequest) bool {
 		if g > 180 {
 			return true
 		}
-		// Hypoglycemia check: only if BPM is also high (stress response)
-		if g > 0 && g < 70 && req.BPM > 100 {
+		// Low glucose: always urgent if non-zero
+		if g > 0 && g < 70 {
 			return true
 		}
 	}
