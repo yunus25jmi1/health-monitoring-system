@@ -20,10 +20,13 @@ type AuthHandler struct {
 }
 
 type registerRequest struct {
-	Name     string `json:"name" binding:"required"`
-	Email    string `json:"email" binding:"required"`
-	Password string `json:"password" binding:"required"`
-	Role     string `json:"role" binding:"required"`
+	Name        string `json:"name" binding:"required"`
+	Email       string `json:"email" binding:"required"`
+	Password    string `json:"password" binding:"required"`
+	Role        string `json:"role" binding:"required"`
+	DoctorToken string `json:"doctor_token"` // Required only for RoleDoctor
+	DeviceKey   string `json:"device_key"`   // Optional for RolePatient
+	DoctorID    *uint  `json:"doctor_id"`    // Optional for RolePatient
 }
 
 type loginRequest struct {
@@ -43,7 +46,13 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	}
 
 	role := strings.ToLower(strings.TrimSpace(req.Role))
-	if role != models.RolePatient && role != models.RoleDoctor {
+	if role == models.RoleDoctor {
+		regToken := strings.TrimSpace(h.cfg.DoctorRegToken)
+		if regToken == "" || strings.TrimSpace(req.DoctorToken) != regToken {
+			middleware.JSONError(c, http.StatusForbidden, "forbidden", "invalid or missing doctor registration token")
+			return
+		}
+	} else if role != models.RolePatient {
 		middleware.JSONError(c, http.StatusBadRequest, "validation_failed", "role must be patient or doctor")
 		return
 	}
@@ -61,10 +70,12 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	}
 
 	user := models.User{
-		Name:     strings.TrimSpace(req.Name),
-		Email:    email,
-		Password: hashed,
-		Role:     role,
+		Name:      strings.TrimSpace(req.Name),
+		Email:     email,
+		Password:  hashed,
+		Role:      role,
+		DeviceKey: strings.TrimSpace(req.DeviceKey),
+		DoctorID:  req.DoctorID,
 	}
 	if err := h.db.Create(&user).Error; err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "duplicate") || strings.Contains(strings.ToLower(err.Error()), "unique") {

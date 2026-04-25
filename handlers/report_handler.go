@@ -35,8 +35,14 @@ func NewReportHandler(cfg config.Config, db *gorm.DB, pdfService *services.PDFSe
 }
 
 func (h *ReportHandler) Pending(c *gin.Context) {
+	authUserID, _ := c.Get("auth_user_id")
+	uid := authUserID.(uint)
+
 	var reports []models.Report
-	if err := h.db.Where("status = ?", models.ReportStatusPending).Order("created_at asc").Find(&reports).Error; err != nil {
+	if err := h.db.Joins("JOIN users ON users.id = reports.patient_id").
+		Where("reports.status = ? AND users.doctor_id = ?", models.ReportStatusPending, uid).
+		Order("reports.created_at asc").
+		Find(&reports).Error; err != nil {
 		middleware.JSONError(c, http.StatusInternalServerError, "internal_error", "failed to fetch pending reports")
 		return
 	}
@@ -59,6 +65,20 @@ func (h *ReportHandler) GetByID(c *gin.Context) {
 		middleware.JSONError(c, http.StatusInternalServerError, "internal_error", "failed to fetch report")
 		return
 	}
+
+	authRole, _ := c.Get("auth_role")
+	authUserID, _ := c.Get("auth_user_id")
+	if role, ok := authRole.(string); ok && role == models.RoleDoctor {
+		uid := authUserID.(uint)
+		var patient models.User
+		if err := h.db.First(&patient, report.PatientID).Error; err == nil {
+			if patient.DoctorID == nil || *patient.DoctorID != uid {
+				middleware.JSONError(c, http.StatusForbidden, "forbidden", "you are not the assigned doctor for this patient")
+				return
+			}
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{"data": report})
 }
 
@@ -83,6 +103,16 @@ func (h *ReportHandler) Patch(c *gin.Context) {
 		}
 		middleware.JSONError(c, http.StatusInternalServerError, "internal_error", "failed to fetch report")
 		return
+	}
+
+	authUserID, _ := c.Get("auth_user_id")
+	uid := authUserID.(uint)
+	var patient models.User
+	if err := h.db.First(&patient, report.PatientID).Error; err == nil {
+		if patient.DoctorID == nil || *patient.DoctorID != uid {
+			middleware.JSONError(c, http.StatusForbidden, "forbidden", "you are not the assigned doctor for this patient")
+			return
+		}
 	}
 
 	if req.FinalNotes != nil {
@@ -138,6 +168,16 @@ func (h *ReportHandler) Approve(c *gin.Context) {
 		}
 		middleware.JSONError(c, http.StatusInternalServerError, "internal_error", "failed to fetch report")
 		return
+	}
+
+	authUserID, _ := c.Get("auth_user_id")
+	uid := authUserID.(uint)
+	var patient models.User
+	if err := h.db.First(&patient, report.PatientID).Error; err == nil {
+		if patient.DoctorID == nil || *patient.DoctorID != uid {
+			middleware.JSONError(c, http.StatusForbidden, "forbidden", "you are not the assigned doctor for this patient")
+			return
+		}
 	}
 
 	if !services.CanTransitionReportStatus(report.Status, models.ReportStatusApproved) {
@@ -239,6 +279,15 @@ func (h *ReportHandler) StreamPDF(c *gin.Context) {
 			middleware.JSONError(c, http.StatusForbidden, "forbidden", "patients can only access their own reports")
 			return
 		}
+	} else if role, ok := authRole.(string); ok && role == models.RoleDoctor {
+		uid := authUserID.(uint)
+		var patient models.User
+		if err := h.db.First(&patient, report.PatientID).Error; err == nil {
+			if patient.DoctorID == nil || *patient.DoctorID != uid {
+				middleware.JSONError(c, http.StatusForbidden, "forbidden", "you are not the assigned doctor for this patient")
+				return
+			}
+		}
 	}
 
 	copyType := strings.ToLower(strings.TrimSpace(c.DefaultQuery("copy", "patient")))
@@ -271,6 +320,18 @@ func (h *ReportHandler) ListByPatient(c *gin.Context) {
 	patientID, err := strconv.Atoi(c.Param("patient_id"))
 	if err != nil || patientID <= 0 {
 		middleware.JSONError(c, http.StatusBadRequest, "validation_failed", "patient_id must be a positive integer")
+		return
+	}
+
+	authUserID, _ := c.Get("auth_user_id")
+	uid := authUserID.(uint)
+	var patient models.User
+	if err := h.db.First(&patient, patientID).Error; err != nil {
+		middleware.JSONError(c, http.StatusNotFound, "not_found", "patient not found")
+		return
+	}
+	if patient.DoctorID == nil || *patient.DoctorID != uid {
+		middleware.JSONError(c, http.StatusForbidden, "forbidden", "you are not the assigned doctor for this patient")
 		return
 	}
 

@@ -13,6 +13,7 @@ type Config struct {
 	DBDSN           string
 	DeviceSecret    string
 	JWTSecret       string
+	DoctorRegToken  string
 	AccessTokenH    int
 	RefreshTokenD   int
 	RateLimitRPM    int
@@ -35,9 +36,10 @@ func LoadConfig() Config {
 
 	return Config{
 		ServerPort:      getEnv("SERVER_PORT", "8080"),
-		DBDSN:           getEnv("DB_DSN", "host=localhost user=postgres password=postgres dbname=health_monitor port=5432 sslmode=disable TimeZone=UTC"),
-		DeviceSecret:    getEnv("DEVICE_SECRET_KEY", "change-me"),
-		JWTSecret:       getEnv("JWT_SECRET", "dev-jwt-secret"),
+		DBDSN:           getEnv("DB_DSN", "host=localhost user=postgres password=postgres dbname=health_monitor port=5432 sslmode=require TimeZone=UTC"),
+		DeviceSecret:    getEnv("DEVICE_SECRET_KEY", ""),
+		JWTSecret:       getEnv("JWT_SECRET", ""),
+		DoctorRegToken:  getEnv("DOCTOR_REGISTRATION_TOKEN", ""),
 		AccessTokenH:    getEnvInt("JWT_ACCESS_HOURS", 8),
 		RefreshTokenD:   getEnvInt("JWT_REFRESH_DAYS", 7),
 		RateLimitRPM:    getEnvInt("RATE_LIMIT_RPM", 100),

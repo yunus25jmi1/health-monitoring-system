@@ -45,8 +45,8 @@ Create a `.env` file in the root directory (refer to `.env.example`):
 ```env
 SERVER_PORT=8080
 DB_DSN=your_postgresql_connection_string
-DEVICE_SECRET_KEY=your_secure_device_key
-JWT_SECRET=your_jwt_signing_secret
+JWT_SECRET=your_secure_jwt_signing_secret
+DOCTOR_REGISTRATION_TOKEN=token_for_new_doctor_accounts
 
 # AI API Keys (At least one required)
 NIM_API_KEY=...
@@ -65,6 +65,9 @@ go run main.go
 The server will automatically run migrations and start listening on `:8080`.
 
 ## 🛡️ Key Security Features
+- **BOLA/IDOR Prevention:** Strict ownership checks ensuring doctors can only access data for their assigned patients.
+- **Secure Registration:** Doctor account creation is protected by a secret registration token to prevent unauthorized privilege escalation.
+- **Per-Device Authentication:** Each patient has a unique device key, preventing cross-device data spoofing.
 - **Concurrency Control:** Row-level locking for background jobs prevents duplicate processing.
 - **Rate Limiting:** Dynamic per-IP rate limiting to prevent telemetry flooding.
 - **Identity:** Bcrypt password hashing and JWT token rotation.

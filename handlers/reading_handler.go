@@ -45,6 +45,12 @@ func (h *ReadingHandler) CreateReading(c *gin.Context) {
 		return
 	}
 
+	deviceKey, _ := c.Get("device_key")
+	if patient.DeviceKey == "" || patient.DeviceKey != deviceKey.(string) {
+		middleware.JSONError(c, http.StatusUnauthorized, "unauthorized", "invalid device key for this patient")
+		return
+	}
+
 	reading := models.Reading{
 		PatientID:    req.PatientID,
 		BPM:          req.BPM,
@@ -89,6 +95,22 @@ func (h *ReadingHandler) ListByPatient(c *gin.Context) {
 		return
 	}
 
+	var patient models.User
+	if err := h.db.First(&patient, patientID).Error; err != nil {
+		middleware.JSONError(c, http.StatusNotFound, "not_found", "patient not found")
+		return
+	}
+
+	authRole, _ := c.Get("auth_role")
+	authUserID, _ := c.Get("auth_user_id")
+	if role, ok := authRole.(string); ok && role == models.RoleDoctor {
+		uid := authUserID.(uint)
+		if patient.DoctorID == nil || *patient.DoctorID != uid {
+			middleware.JSONError(c, http.StatusForbidden, "forbidden", "you are not the assigned doctor for this patient")
+			return
+		}
+	}
+
 	var readings []models.Reading
 	if err := h.db.Where("patient_id = ?", patientID).Order("recorded_at desc").Find(&readings).Error; err != nil {
 		middleware.JSONError(c, http.StatusInternalServerError, "internal_error", "failed to fetch readings")
@@ -103,6 +125,22 @@ func (h *ReadingHandler) LatestByPatient(c *gin.Context) {
 	if err != nil || patientID <= 0 {
 		middleware.JSONError(c, http.StatusBadRequest, "validation_failed", "patient_id must be a positive integer")
 		return
+	}
+
+	var patient models.User
+	if err := h.db.First(&patient, patientID).Error; err != nil {
+		middleware.JSONError(c, http.StatusNotFound, "not_found", "patient not found")
+		return
+	}
+
+	authRole, _ := c.Get("auth_role")
+	authUserID, _ := c.Get("auth_user_id")
+	if role, ok := authRole.(string); ok && role == models.RoleDoctor {
+		uid := authUserID.(uint)
+		if patient.DoctorID == nil || *patient.DoctorID != uid {
+			middleware.JSONError(c, http.StatusForbidden, "forbidden", "you are not the assigned doctor for this patient")
+			return
+		}
 	}
 
 	var reading models.Reading

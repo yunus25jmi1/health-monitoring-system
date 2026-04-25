@@ -19,7 +19,10 @@ type User struct {
 	Name      string    `gorm:"size:100;not null" json:"name"`
 	Email     string    `gorm:"size:150;uniqueIndex;not null" json:"email"`
 	Password  string    `gorm:"not null" json:"-"`
-	Role      string    `gorm:"size:20;not null" json:"role"`
+	Role      string    `gorm:"size:20;not null" json:"role"` 
+	DeviceKey string    `gorm:"size:100;uniqueIndex" json:"-"`
+	DoctorID  *uint     `json:"doctor_id"`
+}
 	CreatedAt time.Time `json:"created_at"`
 }
 

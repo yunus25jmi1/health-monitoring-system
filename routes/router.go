@@ -19,7 +19,7 @@ func NewRouter(cfg config.Config, db *gorm.DB) *gin.Engine {
 	r.Use(gin.Logger(), gin.Recovery())
 	r.Use(middleware.RateLimit(cfg.RateLimitRPM))
 	corsConfig := cors.Config{
-		AllowAllOrigins: true,
+		AllowOrigins:     cfg.AllowedOrigin,
 		AllowMethods:     []string{"GET", "POST", "PATCH", "OPTIONS"},
 		AllowHeaders:     []string{"Content-Type", "Authorization", "X-Device-Key", "Accept", "Origin"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -52,7 +52,7 @@ func NewRouter(cfg config.Config, db *gorm.DB) *gin.Engine {
 			auth.POST("/refresh", authHandler.Refresh)
 		}
 
-		api.POST("/readings", middleware.DeviceAuth(cfg.DeviceSecret), readingHandler.CreateReading)
+		api.POST("/readings", middleware.DeviceAuth(), readingHandler.CreateReading)
 		api.GET("/readings/:patient_id", middleware.JWTAuth(cfg, models.RoleDoctor), readingHandler.ListByPatient)
 		api.GET("/readings/latest/:patient_id", middleware.JWTAuth(cfg, models.RoleDoctor), readingHandler.LatestByPatient)
 
