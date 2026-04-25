@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 
 	"health-go-backend/config"
@@ -41,13 +42,16 @@ func TestProtectedReadingsRouteRequiresDoctorRole(t *testing.T) {
 	r := NewRouter(cfg, db)
 
 	doctor := models.User{Name: "Doc", Email: "doc@test.local", Password: "hash", Role: models.RoleDoctor}
-	patient := models.User{Name: "Pat", Email: "pat@test.local", Password: "hash", Role: models.RolePatient}
+	patient := models.User{Name: "Pat", Email: "pat@test.local", Password: "hash", Role: models.RolePatient, DeviceKey: "dev-1"}
 	if err := db.Create(&doctor).Error; err != nil {
 		t.Fatalf("create doctor: %v", err)
 	}
 	if err := db.Create(&patient).Error; err != nil {
 		t.Fatalf("create patient: %v", err)
 	}
+	patient.DoctorID = &doctor.ID
+	db.Save(&patient)
+
 
 	doctorToken, err := services.GenerateAccessToken(cfg, doctor)
 	if err != nil {
@@ -58,7 +62,7 @@ func TestProtectedReadingsRouteRequiresDoctorRole(t *testing.T) {
 		t.Fatalf("patient token: %v", err)
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/readings/1", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/readings/"+strconv.Itoa(int(patient.ID)), nil)
 	req.Header.Set("Authorization", "Bearer "+patientToken)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -66,7 +70,7 @@ func TestProtectedReadingsRouteRequiresDoctorRole(t *testing.T) {
 		t.Fatalf("expected 403 for patient, got %d", w.Code)
 	}
 
-	req = httptest.NewRequest(http.MethodGet, "/api/v1/readings/1", nil)
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/readings/"+strconv.Itoa(int(patient.ID)), nil)
 	req.Header.Set("Authorization", "Bearer "+doctorToken)
 	w = httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -86,7 +90,7 @@ func TestReadingsPostRequiresDeviceKey(t *testing.T) {
 	}
 	r := NewRouter(cfg, db)
 
-	patient := models.User{Name: "Pat", Email: "pat2@test.local", Password: "hash", Role: models.RolePatient}
+	patient := models.User{Name: "Pat", Email: "pat2@test.local", Password: "hash", Role: models.RolePatient, DeviceKey: "device-key"}
 	if err := db.Create(&patient).Error; err != nil {
 		t.Fatalf("create patient: %v", err)
 	}

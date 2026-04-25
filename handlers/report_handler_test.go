@@ -39,6 +39,12 @@ func TestStreamPDF(t *testing.T) {
 	db := setupReportTestDB(t)
 
 	tmpDir := t.TempDir()
+	doctorID := uint(1)
+	patient := models.User{ID: 3, Name: "P", Email: "p@t.l", Role: models.RolePatient, DoctorID: &doctorID, DeviceKey: "dk-3"}
+	if err := db.Create(&patient).Error; err != nil {
+		t.Fatalf("failed to create patient: %v", err)
+	}
+
 	report := models.Report{ID: 9, PatientID: 3, Status: models.ReportStatusApproved, AIDraft: "ok"}
 	base := filepath.Join(tmpDir, "9")
 	report.PDFPath = &base
@@ -80,6 +86,11 @@ func TestApproveConflictAlreadyApproved(t *testing.T) {
 		t.Fatalf("failed to create doctor: %v", err)
 	}
 
+	patient := models.User{ID: 3, Name: "P", Email: "p@t.l", Role: models.RolePatient, DoctorID: &doctor.ID, DeviceKey: "dk-3-b"}
+	if err := db.Create(&patient).Error; err != nil {
+		t.Fatalf("failed to create patient: %v", err)
+	}
+
 	now := nowUTC()
 	report := models.Report{
 		PatientID:  3,
@@ -114,6 +125,12 @@ func TestStreamPDFFileNotReady(t *testing.T) {
 	db := setupReportTestDB(t)
 	tmpDir := t.TempDir()
 
+	doctorID := uint(1)
+	patient := models.User{ID: 3, Name: "P", Email: "p@t.l", Role: models.RolePatient, DoctorID: &doctorID, DeviceKey: "dk-3-c"}
+	if err := db.Create(&patient).Error; err != nil {
+		t.Fatalf("failed to create patient: %v", err)
+	}
+
 	report := models.Report{PatientID: 3, Status: models.ReportStatusApproved, AIDraft: "ok"}
 	base := filepath.Join(tmpDir, "11")
 	report.PDFPath = &base
@@ -147,6 +164,12 @@ func TestApproveConcurrentRaceOneWins(t *testing.T) {
 	if err := db.Create(&doctor).Error; err != nil {
 		t.Fatalf("failed to create doctor: %v", err)
 	}
+
+	patient := models.User{ID: 4, Name: "P", Email: "p4@t.l", Role: models.RolePatient, DoctorID: &doctor.ID, DeviceKey: "dk-4"}
+	if err := db.Create(&patient).Error; err != nil {
+		t.Fatalf("failed to create patient: %v", err)
+	}
+
 	report := models.Report{PatientID: 4, Status: models.ReportStatusReviewed, AIDraft: "ready"}
 	if err := db.Create(&report).Error; err != nil {
 		t.Fatalf("failed to create report: %v", err)

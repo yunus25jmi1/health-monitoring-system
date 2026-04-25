@@ -16,7 +16,7 @@ func CanTransitionReportStatus(from, to string) bool {
 		return false
 	}
 
-	if from == to {
+	if from == to && from != models.ReportStatusApproved {
 		return true
 	}
 
