@@ -67,15 +67,21 @@ func (h *ReadingHandler) CreateReading(c *gin.Context) {
 	}
 
 	if reading.IsUrgent {
-		if h.jobService != nil {
-			if err := h.jobService.EnqueueAIDraft(reading.PatientID); err != nil {
-				middleware.JSONError(c, http.StatusInternalServerError, "internal_error", "failed to enqueue ai draft job")
-				return
-			}
-		} else if h.aiService != nil {
-			if err := h.aiService.DraftReportForPatient(reading.PatientID); err != nil {
-				middleware.JSONError(c, http.StatusInternalServerError, "ai_unavailable", "urgent reading stored but ai draft failed")
-				return
+		// DEDUPLICATION: Only trigger AI if there isn't already a pending report for this patient
+		var count int64
+		h.db.Model(&models.Report{}).Where("patient_id = ? AND status = ?", reading.PatientID, models.ReportStatusPending).Count(&count)
+
+		if count == 0 {
+			if h.jobService != nil {
+				if err := h.jobService.EnqueueAIDraft(reading.PatientID); err != nil {
+					middleware.JSONError(c, http.StatusInternalServerError, "internal_error", "failed to enqueue ai draft job")
+					return
+				}
+			} else if h.aiService != nil {
+				if err := h.aiService.DraftReportForPatient(reading.PatientID); err != nil {
+					middleware.JSONError(c, http.StatusInternalServerError, "ai_unavailable", "urgent reading stored but ai draft failed")
+					return
+				}
 			}
 		}
 	}

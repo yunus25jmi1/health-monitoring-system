@@ -31,7 +31,8 @@ func ValidateReading(req models.ReadingRequest) error {
 }
 
 func IsUrgent(req models.ReadingRequest) bool {
-	if req.BPM < 50 || req.BPM > 100 {
+	// Only flag if values are non-zero (finger detected) but outside safe range
+	if req.BPM > 0 && (req.BPM < 50 || req.BPM > 100) {
 		return true
 	}
 	if req.SPO2 > 0 && req.SPO2 < 94 {
@@ -42,10 +43,11 @@ func IsUrgent(req models.ReadingRequest) bool {
 	}
 	if req.GlucoseLevel != nil {
 		g := *req.GlucoseLevel
-		if g < 70 || g > 180 {
+		if g > 180 {
 			return true
 		}
-		if g < 70 && req.BPM > 100 {
+		// Hypoglycemia check: only if BPM is also high (stress response)
+		if g > 0 && g < 70 && req.BPM > 100 {
 			return true
 		}
 	}
