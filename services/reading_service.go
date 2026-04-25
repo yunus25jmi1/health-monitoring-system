@@ -10,22 +10,22 @@ var errInvalidVitals = errors.New("validation_failed")
 
 func ValidateReading(req models.ReadingRequest) error {
 	if req.PatientID == 0 {
-		return errInvalidVitals
+		return errors.New("patient_id is required")
 	}
 	if req.BPM < 0 || req.BPM > 300 {
-		return errInvalidVitals
+		return errors.New("bpm out of range")
 	}
 	if req.SPO2 < 0 || req.SPO2 > 100 {
-		return errInvalidVitals
+		return errors.New("spo2 out of range")
 	}
-	if req.Temp < 25 || req.Temp > 45 {
-		return errInvalidVitals
+	if (req.Temp != 0 && req.Temp < 25) || req.Temp > 45 {
+		return errors.New("temperature out of range")
 	}
 	if req.ECGRaw != nil && *req.ECGRaw < -1 {
-		return errInvalidVitals
+		return errors.New("ecg_raw out of range")
 	}
-	if req.GlucoseLevel != nil && (*req.GlucoseLevel < 20 || *req.GlucoseLevel > 600) {
-		return errInvalidVitals
+	if req.GlucoseLevel != nil && (*req.GlucoseLevel < 0 || *req.GlucoseLevel > 600) {
+		return errors.New("glucose_level out of range")
 	}
 	return nil
 }

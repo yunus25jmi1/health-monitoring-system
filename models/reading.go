@@ -16,9 +16,9 @@ type Reading struct {
 
 type ReadingRequest struct {
 	PatientID    uint     `json:"patient_id" binding:"required"`
-	BPM          int      `json:"bpm" binding:"required"`
-	SPO2         int      `json:"spo2" binding:"required"`
-	Temp         float64  `json:"temp" binding:"required"`
+	BPM          int      `json:"bpm"`
+	SPO2         int      `json:"spo2"`
+	Temp         float64  `json:"temp"`
 	ECGRaw       *int     `json:"ecg_raw"`
 	GlucoseLevel *float64 `json:"glucose_level"`
 }

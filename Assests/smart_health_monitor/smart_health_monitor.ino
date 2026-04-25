@@ -32,15 +32,15 @@
 // ============================================================
 //  WiFi CREDENTIALS — change these
 // ============================================================
-const char* WIFI_SSID     = "YOUR_WIFI_SSID";
-const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
+const char* WIFI_SSID     = "Test";
+const char* WIFI_PASSWORD = "25121964";
 
 // ============================================================
 //  BACKEND SERVER — change to your Golang server IP/URL
 // ============================================================
-const char* SERVER_URL = "http://192.168.1.100:8080/api/readings";
-const char* DEVICE_KEY = "esp32_device_key_here";
-const int   PATIENT_ID = 1;
+const char* SERVER_URL = "https://health.yunus.eu.org/api/v1/readings";
+const char* DEVICE_KEY = "Yunus@2512";
+const int   PATIENT_ID = 2;
 
 // ============================================================
 //  GPIO PIN DEFINITIONS

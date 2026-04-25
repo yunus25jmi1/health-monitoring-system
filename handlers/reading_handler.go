@@ -26,12 +26,12 @@ func NewReadingHandler(db *gorm.DB, aiService *services.AIService, jobService *s
 func (h *ReadingHandler) CreateReading(c *gin.Context) {
 	var req models.ReadingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		middleware.JSONError(c, http.StatusBadRequest, "validation_failed", "invalid request payload")
+		middleware.JSONError(c, http.StatusBadRequest, "validation_failed", "invalid request payload: "+err.Error())
 		return
 	}
 
 	if err := services.ValidateReading(req); err != nil {
-		middleware.JSONError(c, http.StatusBadRequest, "validation_failed", "sensor values out of expected bounds")
+		middleware.JSONError(c, http.StatusBadRequest, "validation_failed", "sensor values out of bounds: "+err.Error())
 		return
 	}
 
