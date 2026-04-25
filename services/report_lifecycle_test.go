@@ -14,8 +14,8 @@ func TestCanTransitionReportStatus(t *testing.T) {
 		t.Fatalf("expected reviewed -> approved to be allowed")
 	}
 
-	if CanTransitionReportStatus(models.ReportStatusPending, models.ReportStatusApproved) {
-		t.Fatalf("expected pending -> approved to be rejected")
+	if !CanTransitionReportStatus(models.ReportStatusPending, models.ReportStatusApproved) {
+		t.Fatalf("expected pending -> approved to be allowed")
 	}
 	if CanTransitionReportStatus(models.ReportStatusApproved, models.ReportStatusReviewed) {
 		t.Fatalf("expected approved -> reviewed to be rejected")
