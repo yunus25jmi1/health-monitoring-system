@@ -144,32 +144,11 @@ func (h *ReportHandler) Patch(c *gin.Context) {
 			return
 		}
 
-		// If already in target status, return success (idempotent)
-		if report.Status == toStatus {
-			c.JSON(http.StatusOK, gin.H{"data": report})
-			return
-		}
-
-		result := h.db.Model(&report).
-			Where("id = ? AND status = ?", report.ID, report.Status).
-			Updates(map[string]any{"status": toStatus})
-		
-		if result.Error != nil {
+		// Direct update without strict status matching to prevent 409s
+		if err := h.db.Model(&report).Update("status", toStatus).Error; err != nil {
 			middleware.JSONError(c, http.StatusInternalServerError, "internal_error", "failed to update report status")
 			return
 		}
-		if result.RowsAffected == 0 {
-			// Double check if it was updated by someone else to the SAME status
-			var latest models.Report
-			h.db.First(&latest, report.ID)
-			if latest.Status == toStatus {
-				c.JSON(http.StatusOK, gin.H{"data": latest})
-				return
-			}
-			middleware.JSONError(c, http.StatusConflict, "conflict", "report status changed by another request")
-			return
-		}
-
 		report.Status = toStatus
 	}
 
