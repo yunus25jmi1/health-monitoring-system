@@ -109,6 +109,12 @@ func (h *ReadingHandler) ListByPatient(c *gin.Context) {
 			middleware.JSONError(c, http.StatusForbidden, "forbidden", "you are not the assigned doctor for this patient")
 			return
 		}
+	} else if role, ok := authRole.(string); ok && role == models.RolePatient {
+		uid := authUserID.(uint)
+		if uint(patientID) != uid {
+			middleware.JSONError(c, http.StatusForbidden, "forbidden", "you can only view your own readings")
+			return
+		}
 	}
 
 	var readings []models.Reading
@@ -139,6 +145,12 @@ func (h *ReadingHandler) LatestByPatient(c *gin.Context) {
 		uid := authUserID.(uint)
 		if patient.DoctorID == nil || *patient.DoctorID != uid {
 			middleware.JSONError(c, http.StatusForbidden, "forbidden", "you are not the assigned doctor for this patient")
+			return
+		}
+	} else if role, ok := authRole.(string); ok && role == models.RolePatient {
+		uid := authUserID.(uint)
+		if uint(patientID) != uid {
+			middleware.JSONError(c, http.StatusForbidden, "forbidden", "you can only view your own readings")
 			return
 		}
 	}

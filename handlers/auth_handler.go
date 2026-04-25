@@ -128,10 +128,17 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
+		"token":         access,
 		"access_token":  access,
 		"refresh_token": refresh,
-		"role":          user.Role,
-		"user_id":       user.ID,
+		"user": gin.H{
+			"id":    user.ID,
+			"email": user.Email,
+			"name":  user.Name,
+			"role":  user.Role,
+		},
+		"role":    user.Role,
+		"user_id": user.ID,
 	})
 }
 

@@ -34,6 +34,12 @@ func NewReportHandler(cfg config.Config, db *gorm.DB, pdfService *services.PDFSe
 	return &ReportHandler{cfg: cfg, db: db, pdfService: pdfService, jobService: jobService}
 }
 
+type ReportResponse struct {
+	models.Report
+	PatientName string `json:"patient_name"`
+	IsUrgent    bool   `json:"is_urgent"`
+}
+
 func (h *ReportHandler) Pending(c *gin.Context) {
 	authUserID, _ := c.Get("auth_user_id")
 	uid := authUserID.(uint)
@@ -46,7 +52,23 @@ func (h *ReportHandler) Pending(c *gin.Context) {
 		middleware.JSONError(c, http.StatusInternalServerError, "internal_error", "failed to fetch pending reports")
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"data": reports})
+
+	response := make([]ReportResponse, 0, len(reports))
+	for _, r := range reports {
+		var patient models.User
+		h.db.First(&patient, r.PatientID)
+
+		var latestReading models.Reading
+		h.db.Where("patient_id = ?", r.PatientID).Order("recorded_at desc").First(&latestReading)
+
+		response = append(response, ReportResponse{
+			Report:      r,
+			PatientName: patient.Name,
+			IsUrgent:    latestReading.IsUrgent,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": response})
 }
 
 func (h *ReportHandler) GetByID(c *gin.Context) {
@@ -323,6 +345,7 @@ func (h *ReportHandler) ListByPatient(c *gin.Context) {
 		return
 	}
 
+	authRole, _ := c.Get("auth_role")
 	authUserID, _ := c.Get("auth_user_id")
 	uid := authUserID.(uint)
 	var patient models.User
@@ -330,9 +353,16 @@ func (h *ReportHandler) ListByPatient(c *gin.Context) {
 		middleware.JSONError(c, http.StatusNotFound, "not_found", "patient not found")
 		return
 	}
-	if patient.DoctorID == nil || *patient.DoctorID != uid {
-		middleware.JSONError(c, http.StatusForbidden, "forbidden", "you are not the assigned doctor for this patient")
-		return
+	if role, ok := authRole.(string); ok && role == models.RoleDoctor {
+		if patient.DoctorID == nil || *patient.DoctorID != uid {
+			middleware.JSONError(c, http.StatusForbidden, "forbidden", "you are not the assigned doctor for this patient")
+			return
+		}
+	} else if role, ok := authRole.(string); ok && role == models.RolePatient {
+		if uint(patientID) != uid {
+			middleware.JSONError(c, http.StatusForbidden, "forbidden", "you can only view your own reports")
+			return
+		}
 	}
 
 	var reports []models.Report
