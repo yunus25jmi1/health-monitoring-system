@@ -43,11 +43,15 @@ func TestProtectedReadingsRouteRequiresDoctorRole(t *testing.T) {
 
 	doctor := models.User{Name: "Doc", Email: "doc@test.local", Password: "hash", Role: models.RoleDoctor}
 	patient := models.User{Name: "Pat", Email: "pat@test.local", Password: "hash", Role: models.RolePatient, DeviceKey: "dev-1"}
+	otherPatient := models.User{Name: "Other", Email: "other@test.local", Password: "hash", Role: models.RolePatient, DeviceKey: "dev-2"}
 	if err := db.Create(&doctor).Error; err != nil {
 		t.Fatalf("create doctor: %v", err)
 	}
 	if err := db.Create(&patient).Error; err != nil {
 		t.Fatalf("create patient: %v", err)
+	}
+	if err := db.Create(&otherPatient).Error; err != nil {
+		t.Fatalf("create other patient: %v", err)
 	}
 	patient.DoctorID = &doctor.ID
 	db.Save(&patient)
@@ -62,12 +66,12 @@ func TestProtectedReadingsRouteRequiresDoctorRole(t *testing.T) {
 		t.Fatalf("patient token: %v", err)
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/readings/"+strconv.Itoa(int(patient.ID)), nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/readings/"+strconv.Itoa(int(otherPatient.ID)), nil)
 	req.Header.Set("Authorization", "Bearer "+patientToken)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusForbidden {
-		t.Fatalf("expected 403 for patient, got %d", w.Code)
+		t.Fatalf("expected 403 for patient viewing others, got %d", w.Code)
 	}
 
 	req = httptest.NewRequest(http.MethodGet, "/api/v1/readings/"+strconv.Itoa(int(patient.ID)), nil)

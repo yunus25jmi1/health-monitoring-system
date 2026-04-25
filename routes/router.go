@@ -53,15 +53,15 @@ func NewRouter(cfg config.Config, db *gorm.DB) *gin.Engine {
 		}
 
 		api.POST("/readings", middleware.DeviceAuth(), readingHandler.CreateReading)
-		api.GET("/readings/:patient_id", middleware.JWTAuth(cfg, models.RoleDoctor), readingHandler.ListByPatient)
-		api.GET("/readings/latest/:patient_id", middleware.JWTAuth(cfg, models.RoleDoctor), readingHandler.LatestByPatient)
+		api.GET("/readings/:patient_id", middleware.JWTAuth(cfg, models.RoleDoctor, models.RolePatient), readingHandler.ListByPatient)
+		api.GET("/readings/latest/:patient_id", middleware.JWTAuth(cfg, models.RoleDoctor, models.RolePatient), readingHandler.LatestByPatient)
 
-		reports := api.Group("/reports", middleware.JWTAuth(cfg, models.RoleDoctor))
+		reports := api.Group("/reports", middleware.JWTAuth(cfg, models.RoleDoctor, models.RolePatient))
 		{
-			reports.GET("/pending", reportHandler.Pending)
+			reports.GET("/pending", middleware.JWTAuth(cfg, models.RoleDoctor), reportHandler.Pending) // Only doctors see pending
 			reports.GET("/:id", reportHandler.GetByID)
-			reports.PATCH("/:id", reportHandler.Patch)
-			reports.POST("/:id/approve", reportHandler.Approve)
+			reports.PATCH("/:id", middleware.JWTAuth(cfg, models.RoleDoctor), reportHandler.Patch)    // Only doctors patch
+			reports.POST("/:id/approve", middleware.JWTAuth(cfg, models.RoleDoctor), reportHandler.Approve) // Only doctors approve
 			reports.GET("/patient/:patient_id", reportHandler.ListByPatient)
 		}
 
