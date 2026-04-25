@@ -137,9 +137,6 @@ func (h *ReportHandler) Patch(c *gin.Context) {
 		}
 	}
 
-	if req.FinalNotes != nil {
-		report.FinalNote = req.FinalNotes
-	}
 	if req.Status != nil {
 		toStatus := *req.Status
 		if !services.CanTransitionReportStatus(report.Status, toStatus) {
@@ -147,31 +144,43 @@ func (h *ReportHandler) Patch(c *gin.Context) {
 			return
 		}
 
+		// If already in target status, return success (idempotent)
+		if report.Status == toStatus {
+			c.JSON(http.StatusOK, gin.H{"data": report})
+			return
+		}
+
 		result := h.db.Model(&report).
 			Where("id = ? AND status = ?", report.ID, report.Status).
-			Updates(map[string]any{"status": toStatus, "final_note": report.FinalNote})
+			Updates(map[string]any{"status": toStatus})
+		
 		if result.Error != nil {
-			middleware.JSONError(c, http.StatusInternalServerError, "internal_error", "failed to update report")
+			middleware.JSONError(c, http.StatusInternalServerError, "internal_error", "failed to update report status")
 			return
 		}
 		if result.RowsAffected == 0 {
+			// Double check if it was updated by someone else to the SAME status
+			var latest models.Report
+			h.db.First(&latest, report.ID)
+			if latest.Status == toStatus {
+				c.JSON(http.StatusOK, gin.H{"data": latest})
+				return
+			}
 			middleware.JSONError(c, http.StatusConflict, "conflict", "report status changed by another request")
 			return
 		}
 
-		if err := h.db.First(&report, reportID).Error; err != nil {
-			middleware.JSONError(c, http.StatusInternalServerError, "internal_error", "failed to reload report")
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"data": report})
-		return
+		report.Status = toStatus
 	}
 
-	result := h.db.Model(&report).Where("id = ?", report.ID).Updates(map[string]any{"final_note": report.FinalNote})
-	if result.Error != nil {
-		middleware.JSONError(c, http.StatusInternalServerError, "internal_error", "failed to update report")
-		return
+	if req.FinalNotes != nil {
+		if err := h.db.Model(&report).Update("final_note", *req.FinalNotes).Error; err != nil {
+			middleware.JSONError(c, http.StatusInternalServerError, "internal_error", "failed to update notes")
+			return
+		}
+		report.FinalNote = req.FinalNotes
 	}
+
 	c.JSON(http.StatusOK, gin.H{"data": report})
 }
 
