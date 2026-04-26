@@ -23,7 +23,7 @@ func main() {
 	jobService := services.NewAsyncJobService(db, aiService, pdfService)
 
 	go func() {
-		ticker := time.NewTicker(5 * time.Second)
+		ticker := time.NewTicker(15 * time.Second)
 		defer ticker.Stop()
 		for range ticker.C {
 			if err := jobService.ProcessDueJobs(25); err != nil {

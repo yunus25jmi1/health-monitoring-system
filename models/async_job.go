@@ -18,7 +18,7 @@ type AsyncJob struct {
 	Status      string     `gorm:"size:20;index:idx_job_type_status,priority:2;not null;default:pending" json:"status"`
 	Attempts    int        `gorm:"not null;default:0" json:"attempts"`
 	MaxRetries  int        `gorm:"not null;default:5" json:"max_retries"`
-	NextRunAt   time.Time  `gorm:"index;not null" json:"next_run_at"`
+	NextRunAt   time.Time  `gorm:"index:idx_async_jobs_pending,where:status='pending';not null" json:"next_run_at"`
 	LastError   *string    `gorm:"type:text" json:"last_error,omitempty"`
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`

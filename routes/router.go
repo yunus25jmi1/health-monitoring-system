@@ -50,6 +50,7 @@ func NewRouter(cfg config.Config, db *gorm.DB) *gin.Engine {
 			auth.POST("/register", authHandler.Register)
 			auth.POST("/login", authHandler.Login)
 			auth.POST("/refresh", authHandler.Refresh)
+			auth.GET("/me", middleware.JWTAuth(cfg), authHandler.Me)
 		}
 
 		api.POST("/readings", middleware.DeviceAuth(), readingHandler.CreateReading)

@@ -102,7 +102,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	email := strings.ToLower(strings.TrimSpace(req.Email))
 	var user models.User
-	if err := h.db.Where("email = ?", email).First(&user).Error; err != nil {
+	if err := h.db.Where("email = ?", email).Take(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			middleware.JSONError(c, http.StatusUnauthorized, "unauthorized", "invalid email or password")
 			return
@@ -168,4 +168,29 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"access_token": access})
+}
+
+func (h *AuthHandler) Me(c *gin.Context) {
+	userID, exists := c.Get("auth_user_id")
+	if !exists {
+		middleware.JSONError(c, http.StatusUnauthorized, "unauthorized", "missing user context")
+		return
+	}
+
+	var user models.User
+	if err := h.db.Where("id = ?", userID).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			middleware.JSONError(c, http.StatusNotFound, "not_found", "user not found")
+			return
+		}
+		middleware.JSONError(c, http.StatusInternalServerError, "internal_error", "failed to fetch user")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"id":    user.ID,
+		"name":  user.Name,
+		"email": user.Email,
+		"role":  user.Role,
+	})
 }
