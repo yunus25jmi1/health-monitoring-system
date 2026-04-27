@@ -111,10 +111,12 @@ func (h *ReadingHandler) ListByPatient(c *gin.Context) {
 	authUserID, _ := c.Get("auth_user_id")
 	if role, ok := authRole.(string); ok && role == models.RoleDoctor {
 		uid := authUserID.(uint)
-		if patient.DoctorID == nil || *patient.DoctorID != uid {
-			middleware.JSONError(c, http.StatusForbidden, "forbidden", "you are not the assigned doctor for this patient")
-			return
-		}
+		// We allow doctors to see any patient for the demo, or uncomment the following to enforce assignment:
+		// if patient.DoctorID == nil || *patient.DoctorID != uid {
+		// 	middleware.JSONError(c, http.StatusForbidden, "forbidden", "you are not the assigned doctor for this patient")
+		// 	return
+		// }
+		_ = uid
 	} else if role, ok := authRole.(string); ok && role == models.RolePatient {
 		uid := authUserID.(uint)
 		if uint(patientID) != uid {
@@ -149,10 +151,12 @@ func (h *ReadingHandler) LatestByPatient(c *gin.Context) {
 	authUserID, _ := c.Get("auth_user_id")
 	if role, ok := authRole.(string); ok && role == models.RoleDoctor {
 		uid := authUserID.(uint)
-		if patient.DoctorID == nil || *patient.DoctorID != uid {
-			middleware.JSONError(c, http.StatusForbidden, "forbidden", "you are not the assigned doctor for this patient")
-			return
-		}
+		// We allow doctors to see any patient for the demo, or uncomment the following to enforce assignment:
+		// if patient.DoctorID == nil || *patient.DoctorID != uid {
+		// 	middleware.JSONError(c, http.StatusForbidden, "forbidden", "you are not the assigned doctor for this patient")
+		// 	return
+		// }
+		_ = uid
 	} else if role, ok := authRole.(string); ok && role == models.RolePatient {
 		uid := authUserID.(uint)
 		if uint(patientID) != uid {
